@@ -1,5 +1,7 @@
 # day2    mall整合Swagger-UI实现在线API文档
 
+[今日内容](https://www.macrozheng.com/mall/architect/mall_arch_03.html#redis%E7%9A%84%E5%AE%89%E8%A3%85%E5%92%8C%E5%90%AF%E5%8A%A8)
+
 ## [Swagger](https://so.csdn.net/so/search?q=Swagger&spm=1001.2101.3001.7020) UI
 
 > 参考文章如下
@@ -91,3 +93,13 @@ public class Swagger2Config {
 ## Redis
 
 无Redis，Linux基础，请看Redis篇
+
+
+
+
+
+> 关于day2内容时间的说明：
+>
+> 先行学习Redis，Linux内容， 后面的内容留待后日（也算进day2， 但是会在版本中注明"day2    2ed"
+>
+> -------------------------------------------------------------------------------------------------
