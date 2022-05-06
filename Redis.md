@@ -32,6 +32,8 @@ eg
 # tar -xzvf test.tar.gz 
 ```
 
+进入文件夹
+
 编译
 
 `make`
@@ -82,7 +84,7 @@ linux命令：ps [options] [--help]           #Linux ps （英文全拼：proces
 
 6. Redis 关闭
 
-   单实例关闭：redis-cli shut也可以进入终端后再关闭
+   单实例关闭：redis-cli shut,也可以进入终端后再关闭
 
    多实例关闭，指定端口关闭：redis-cli -p[端口号]  shutdown
    
@@ -321,7 +323,7 @@ zrank <key><value>返回该值在集合中的排名，从0开始。
 
 永久设置，需要再配置文件中进行设置。
 
-需要更改config中requirepass
+需要更改conf中requirepass
 
 设置后通过auth “password”登录
 
@@ -402,3 +404,239 @@ bitop  and(or/not/xor) <destkey> [key…]
 
 > 注意：redis的setbit设置或清除的是bit位置，而bitcount计算的是byte位置。
 
+#### Bitmaps与set对比
+
+> 假设网站有1亿用户， 每天独立访问的用户有5千万， 如果每天用集合类型和Bitmaps分别存储活跃用户可以得到表
+>
+> | set和Bitmaps存储一天活跃用户对比 |                    |                  |                        |
+> | -------------------------------- | ------------------ | ---------------- | ---------------------- |
+> | 数据类型                         | 每个用户id占用空间 | 需要存储的用户量 | 全部内存量             |
+> | 集合类型                         | 64位               | 50000000         | 64位*50000000 = 400MB  |
+> | Bitmaps                          | 1位                | 100000000        | 1位*100000000 = 12.5MB |
+> |                                  |                    |                  |                        |
+>
+>  
+>
+>  
+>
+> 很明显， 这种情况下使用Bitmaps能节省很多的内存空间， 尤其是随着时间推移节省的内存还是非常可观的
+>
+> | set和Bitmaps存储独立用户空间对比 |        |        |       |
+> | -------------------------------- | ------ | ------ | ----- |
+> | 数据类型                         | 一天   | 一个月 | 一年  |
+> | 集合类型                         | 400MB  | 12GB   | 144GB |
+> | Bitmaps                          | 12.5MB | 375MB  | 4.5GB |
+>
+>  
+>
+>  
+>
+> 但Bitmaps并不是万金油， 假如该网站每天的独立访问用户很少， 例如只有10万（大量的僵尸用户） ， 那么两者的对比如下表所示， 很显然， 这时候使用Bitmaps就不太合适了， 因为基本上大部分位都是0。
+>
+> | set和Bitmaps存储一天活跃用户对比（独立用户比较少） |                    |                  |                        |
+> | -------------------------------------------------- | ------------------ | ---------------- | ---------------------- |
+> | 数据类型                                           | 每个userid占用空间 | 需要存储的用户量 | 全部内存量             |
+> | 集合类型                                           | 64位               | 100000           | 64位*100000 = 800KB    |
+> | Bitmaps                                            | 1位                | 100000000        | 1位*100000000 = 12.5MB |
+
+### HyperLogLog
+
+
+
+能够降低一定的精度来平衡存储空间
+
+HyperLogLog 是用来做基数统计的算法，HyperLogLog 的优点是，在输入元素的数量或者体积非常非常大时，计算基数所需的空间总是固定 的、并且是很小的。
+
+在 Redis 里面，每个 HyperLogLog 键只需要花费 12 KB 内存，就可以计算接近 2^64 个不同元素的基数。
+
+#### 什么是基数?
+
+比如数据集 {1, 3, 5, 7, 5, 7, 8}， 那么这个数据集的基数集为 {1, 3, 5 ,7, 8}, 基数(不重复元素)为5。 基数估计就是在误差可接受的范围内，快速计算基数。
+
+```
+pfadd <key>< element> [element ...]   添加指定元素到 HyperLogLog 中
+
+pfcount<key> [key ...] 计算HLL的近似基数
+
+pfmerge<destkey><sourcekey> [sourcekey ...]  将一个或多个HLL合并后的结果存储在另一个HLL中，
+```
+
+### Geospatial
+
+元素的2维坐标--经纬度
+
+```
+geoadd<key>< longitude><latitude><member> [longitude latitude member...]   添加地理位置（经度，纬度，名称）
+
+geoadd china:city 106.50 29.53 chongqing 114.05 22.52 shenzhen 116.38 39.90 beijing
+
+geopos  <key><member> [member...]  获得指定地区的坐标值
+geodist<key><member1><member2>  [m|km|ft|mi ]  获取两个位置之间的直线距离
+georadius<key>< longitude><latitude>radius  m|km|ft|mi   以给定的经纬度为中心，找出某一半径内的元素
+```
+
+> 有效的经度从 -180 度到 180 度。有效的纬度从 -85.05112878 度到 85.05112878 度。
+
+## Redis_Jedis_测试
+
+### Jedis所需要的jar包
+
+```
+<dependency>
+<groupId>redis.clients</groupId>
+<artifactId>jedis</artifactId>
+<version>3.2.0</version>
+</dependency>
+```
+
+​                                                                                                                                                                                                                                                                                                                                                      
+
+###  连接到 redis 服务
+
+#### 实例
+
+```
+public class RedisJava {
+    public static void main(String[] args) {
+        //连接本地的 Redis 服务
+        Jedis jedis = new Jedis("localhost");
+        // 如果 Redis 服务设置了密码，需要下面这行，没有就不需要
+        // jedis.auth("123456"); 
+        System.out.println("连接成功");
+        //查看服务是否运行
+        System.out.println("服务正在运行: "+jedis.ping());
+    }
+}
+```
+
+​                                                                                                                    
+
+>  注意如果连接阿里云要配置你的安全组，并且设置防火墙        （ps：我花了一下午                                
+
+### Redis Java api 实例
+
+略
+
+## springboot整合redis
+
+
+
+
+
+1、在pom.xml文件中引入redis相关依赖
+
+```
+<!-- redis -->
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-data-redis</artifactId>
+</dependency>
+
+<!-- spring2.X集成redis所需common-pool2-->
+<dependency>
+<groupId>org.apache.commons</groupId>
+<artifactId>commons-pool2</artifactId>
+<version>2.6.0</version>
+</dependency>
+```
+
+2、application.properties配置redis配置
+
+```
+#Redis服务器地址
+spring.redis.host=192.168.140.136
+#Redis服务器连接端口
+spring.redis.port=6379
+#Redis数据库索引（默认为0）
+spring.redis.database= 0
+#连接超时时间（毫秒）
+spring.redis.timeout=1800000
+#连接池最大连接数（使用负值表示没有限制）
+spring.redis.lettuce.pool.max-active=20
+#最大阻塞等待时间(负数表示没限制)
+spring.redis.lettuce.pool.max-wait=-1
+#连接池中的最大空闲连接
+spring.redis.lettuce.pool.max-idle=5
+#连接池中的最小空闲连接
+spring.redis.lettuce.pool.min-idle=0
+```
+
+3、添加redis配置类
+
+```
+@EnableCaching
+@Configuration
+public class RedisConfig extends CachingConfigurerSupport {
+
+@Bean
+public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
+    RedisTemplate<String, Object> template = new RedisTemplate<>();
+    RedisSerializer<String> redisSerializer = new StringRedisSerializer();
+    Jackson2JsonRedisSerializer jackson2JsonRedisSerializer = new Jackson2JsonRedisSerializer(Object.class);
+    ObjectMapper om = new ObjectMapper();
+    om.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
+    om.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL);
+    jackson2JsonRedisSerializer.setObjectMapper(om);
+    template.setConnectionFactory(factory);
+
+//key序列化方式
+        template.setKeySerializer(redisSerializer);
+//value序列化
+        template.setValueSerializer(jackson2JsonRedisSerializer);
+//value hashmap序列化
+        template.setHashValueSerializer(jackson2JsonRedisSerializer);
+        return template;  mxnnm,m,n,mmm       
+    }
+
+@Bean
+public CacheManager cacheManager(RedisConnectionFactory factory) {
+    RedisSerializer<String> redisSerializer = new StringRedisSerializer();
+    Jackson2JsonRedisSerializer jackson2JsonRedisSerializer = new Jackson2JsonRedisSerializer(Object.class);
+
+//解决查询缓存转换异常的问题
+        ObjectMapper om = new ObjectMapper();
+        om.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
+        om.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL);
+        jackson2JsonRedisSerializer.setObjectMapper(om);
+// 配置序列化（解决乱码的问题）,过期时间600秒
+        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
+                .entryTtl(Duration.ofSeconds(600))
+                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(redisSerializer))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jackson2JsonRedisSerializer))
+                .disableCachingNullValues();
+        RedisCacheManager cacheManager = RedisCacheManager.builder(factory)
+                .cacheDefaults(config)
+                .build();
+        return cacheManager;
+    }
+}
+```
+
+##  Redis的事务定义        
+
+Redis事务是一个单独的隔离操作：事务中的所有命令都会序列化、按顺序地执行。事务在执行的过程中，不会被其他客户端发送来的命令请求所打断。
+Redis事务的主要作用就是串联多个命令防止别的命令插队。
+
+### Multi、Exec、discard
+
+从输入Multi命令开始，输入的命令都会依次进入命令队列中，但不会执行，直到输入Exec后，Redis会将之前的命令队列中的命令依次执行。
+
+组队的过程中可以通过discard来放弃组队。  
+
+单个 Redis 命令的执行是原子性的，但 Redis 没有在事务上增加任何维持原子性的机制，所以 Redis 事务的执行并不是原子性的。
+
+![image-20220506232640172](resource\image-20220506232640172.png)
+
+组队中某个命令出现了报告错误，执行时整个的所有队列都会被取消。
+
+如果执行阶段某个命令报出了错误，则只有报错的命令不会被执行，而其他的命令都会执行，不会回滚。
+
+### WATCH key [key ...]
+
+在执行multi之前，先执行watch key1 [key2],可以监视一个(或多个) key ，如果在事务执行之前这个(或这些) key 被其他命令所改动，那么事务将被打断。
+
+### unwatch
+
+取消 WATCH 命令对所有 key 的监视。
+
+如果在执行 WATCH 命令之后，EXEC 命令或DISCARD 命令先被执行了的话，那么就不需要再执行UNWATCH 了。
