@@ -8,7 +8,7 @@
 
 [详情见此文章]([Swagger UI简介_真香号的博客-CSDN博客_swagger ui](https://blog.csdn.net/zhanshixiang/article/details/104605292))
 
-[第一遍模糊的地方见此文章](https://blog.csdn.net/zhanggonglalala/article/details/98070986)
+[第一篇模糊的地方见此文章](https://blog.csdn.net/zhanggonglalala/article/details/98070986)
 
  ###   组件
 
@@ -93,10 +93,6 @@ public class Swagger2Config {
 ## Redis
 
 无Redis，Linux基础，请看Redis篇
-
-
-
-
 
 > 关于day2内容时间的说明：
 >
