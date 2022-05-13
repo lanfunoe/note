@@ -1,16 +1,173 @@
-## SpringSecurity
+# SpringSecurity
 
-### Password Storage
+[学习资料：官方文档](https://docs.spring.io/spring-security/reference/features/authentication/password-storage.html#authentication-password-storage-dpe)
+
+## Password Storage
+
+### DelegatingPasswordEncoder
+
+委托指定算法对密码进行编码
 
 > 格式：{id}encodedPassword
 
-###  Password Encoding
+### Password Encoding
+
+idForEncode:决定使用哪种编码器编码密码。
+
+### Password Matching
+
+- 通过id匹配PasswordEncoder，如果出现
+
+   id is not mapped (including a null id) 将会报错：IllegalArgumentException
+
+ 此行为可由
+
+ ```java
+ DelegatingPasswordEncoder.setDefaultPasswordEncoderForMatches(PasswordEncoder)
+ ```
+
+自定义
+
+- 此方式不可恢复明文
+
+### 单用户
+
+  ```java
+  User user = User.withDefaultPasswordEncoder()
+    .username("user")
+    .password("password")
+    .roles("user")
+    .build();
+  System.out.println(user.getPassword());
+  // {bcrypt}$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG
+  ```
+
+### 多用户
+
+```java
+UserBuilder users = User.withDefaultPasswordEncoder();
+User user = users
+  .username("user")
+  .password("password")
+  .roles("USER")
+  .build();
+User admin = users
+  .username("admin")
+  .password("password")
+  .roles("USER","ADMIN")
+  .build()
+```
+
+虽然哈希了存储的密码，但是密码任然暴露存储和源码中，因此，是不安全的。  
+
+>  PS：各种编码器细节略
+
+### Password Storage Configuration   
+
+Spring Security uses [DelegatingPasswordEncoder](https://docs.spring.io/spring-security/reference/features/authentication/password-storage.html#authentication-password-storage-dpe) by default. However, this can be customized by exposing a `PasswordEncoder` as a Spring bean.   
+
+```java
+@Bean
+public static PasswordEncoder passwordEncoder() {
+    return NoOpPasswordEncoder.getInstance();
+}
+```
+
+### Change Password Configuration 
+
+​    
+
+```java
+http
+    .passwordManagement(Customizer.withDefaults())
+```
+
+Then, when a password manager navigates to `/.well-known/change-password` then Spring Security will redirect your endpoint, `/change-password`
+
+Or, if your endpoint is something other than `/change-password`, you can also specify that like so:
+
+ 
+
+```java
+http
+    .passwordManagement((management) -> management
+        .changePasswordPage("/update-password")
+    )
+```
+
+ With the above configuration, when a password manager navigates to /.well-known/change-password, then Spring Security will redirect to /update-password.   
+
+## CSRF
+
+> Cross Site Request Forgery (CSRF)
+
+此部分先行略过
+
+## Servlet Applications
+
+### Getting Start
+
+#### Spring Boot automatically:
+
+- 打开默认配置，生成了servlet过滤器，此过滤器是一个名为springSecurityFilterChain的bean，这个bean在你的应用中负全责例如：protecting the application URLs, validating submitted username and passwords, redirecting to the log in form, and so on
+
+- 生成一个username为user，密码随机的bean，bean名称为：UserDetailsService，密码记录在console
+
+- 每个请求都用一个名为SpringsecurityFilterchain的bean注册过滤器。
+
+#### springboot的功能：
+
+- 用户与应用程序的任何交互需要认证
+
+- 为您生成默认登录表单
+
+- 让用户名为user和密码为密码在控制台的用户使用基于表格的身份验证进行身份验证
+
+- 使用bcrypt保护密码存储
+
+- 让用户注销
+
+- CSRF攻击预防
+
+- 会话固定保护
+
+- 安全标头集成
+
+  ```
+  HTTP Strict Transport Security for secure requests
+  
+  X-Content-Type-Options integration
+  
+  Cache Control (can be overridden later by your application to allow caching of your static resources)
+  
+  X-XSS-Protection integration
+  
+  X-Frame-Options integration to help prevent Clickjacking
+  ```
+
+  
+
+- 与以下servlet API方法集成：
+
+  ```
+  HttpServletRequest#getRemoteUser()
+  
+  HttpServletRequest.html#getUserPrincipal()
+  
+  HttpServletRequest.html#isUserInRole(java.lang.String)
+  
+  HttpServletRequest.html#login(java.lang.String, java.lang.String)
+  
+  HttpServletRequest.html#logout()
+  ```
+
+### Architecture
+
+#### DelegatingFilterProxy
 
 
 
-##	Spring Security 常用配置详解
-
-[引用](https://docs.spring.io/spring-security/reference/features/authentication/password-storage.html#authentication-password-storage-dpe)
+## Spring Security 常用配置详解
 
 [引用](https://www.jianshu.com/p/77b4835b6e8e)
 
