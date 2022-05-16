@@ -284,17 +284,281 @@ The SecurityContext is obtained from the SecurityContextHolder. The SecurityCont
 
 ##### GrantedAuthority
 
+GrantedAuthoritys are high level permissions the user is granted. A few examples are roles or scopes.
+
+GrantedAuthoritys can be obtained from the Authentication.getAuthorities() method.
+
+返回值类型：Collection
+
+当使用基于账号密码的认证时，GrantedAuthority 通常被UserDetailsService导入。
+
+授予权利的设置通常是应用级别的，不能为单个对象设置，但是可以使用项目的域对象安全功能解决此需求。
+
 ##### AuthenticationManager
+
+AuthenticationManager是定义Spring Security过滤器如何执行执行身份验证的API。
+
+控制器（即Spring Security的过滤器调用AuthenticationManager在SecurityContexTholder上设置返回的身份验证
+
+the most common implementation is ProviderManager.
+
+
 
 ##### ProviderManager
 
+`ProviderManager` delegates to a `List` of AuthenticationProviders.Each `AuthenticationProvider` has an opportunity to indicate that authentication should be successful, fail, or indicate it cannot make a decision and allow a downstream `AuthenticationProvider` to decide.
+
+![](resource/providermanager.png)
+
+ If none of the configured AuthenticationProviders can authenticate, then authentication will fail with a ProviderNotFoundException which is a special AuthenticationException that indicates the ProviderManager was not configured to support the type of Authentication that was passed into it.
+
+ each AuthenticationProvider knows how to perform a specific type of authentication. For example, one AuthenticationProvider might be able to validate a username/password, while another might be able to authenticate a SAML assertion.
+
+This allows each AuthenticationProvider to do a very specific type of authentication, while supporting multiple types of authentication and only exposing a single AuthenticationManager bean.
+
+ProvidManager还允许配置可选的Parent AuthenticationManager,The parent can be any type of AuthenticationManager, but it is often an instance of ProviderManager.
+
+![](resource/providermanager-parent.png)
+
+multiple ProviderManager instances might share the same parent AuthenticationManager
+
+![](resource/providermanagers-parent.png)
+
+默认情况下，ProvidManager将尝试从成功的身份验证请求返回的身份验证对象中清除任何敏感的凭据信息This prevents information like passwords being retained longer than necessary in the `HttpSession`。This may cause issues when you are using a cache of user objects, for example, to improve performance in a stateless application：如果Authentication包含一个指向缓存中对象的指针，例如UserDetails实例，这个操作就会删除他的验证信息，从而导致不可能再次验证cache的值。An obvious solution is to make a copy of the object first, either in the cache implementation or in the `AuthenticationProvider` which creates the returned `Authentication` object.
+
+You need to take this into account if you are using a cache。
+
+另外，您可以禁用ProvidManager上的ErasecredentialSafterAuthentication属性
+
 ##### AuthenticationProvider
+
+Multiple AuthenticationProviders can be injected into ProviderManager. Each AuthenticationProvider performs a specific type of authentication. For example, DaoAuthenticationProvider supports username/password based authentication while JwtAuthenticationProvider supports authenticating a JWT token.
 
 ##### Request Credentials with AuthenticationEntryPoint
 
+“认证入口点”
+
+功能：
+
+AuthenticationEntryPoint is used to send an HTTP response that requests credentials from a client.
+
+应用场景：
+
+Sometimes a client will proactively include credentials such as a username/password to request a resource. In these cases, Spring Security does not need to provide an HTTP response that requests credentials from the client since they are already included.
+
+In other cases, a client will make an unauthenticated request to a resource that they are not authorized to access. In this case, an implementation of AuthenticationEntryPoint is used to request credentials from the client. The AuthenticationEntryPoint implementation might perform a redirect to a log in page, respond with an WWW-Authenticate header, etc.
+
 ##### AbstractAuthenticationProcessingFilter
 
+功能：
 
+AbstractAuthenticationProcessingFilter is used as a base Filter for authenticating a user’s credentials. Before the credentials can be authenticated, Spring Security typically requests the credentials using AuthenticationEntryPoint.Next, the AbstractAuthenticationProcessingFilter can authenticate any authentication requests that are submitted to it.
+
+![](resource/abstractauthenticationprocessingfilter.png)
+
+1. When the user submits their credentials, the AbstractAuthenticationProcessingFilter creates an Authentication from the HttpServletRequest to be authenticated. The type of Authentication created depends on the subclass of AbstractAuthenticationProcessingFilter. For example, UsernamePasswordAuthenticationFilter creates a UsernamePasswordAuthenticationToken from a username and password that are submitted in the HttpServletRequest.
+
+2.  Next, the Authentication is passed into the AuthenticationManager to be authenticated.
+
+3. If authentication fails, then Failure
+
+   The SecurityContextHolder is cleared out.
+
+   RememberMeServices.loginFail is invoked. If remember me is not configured, this is a no-op.
+
+   AuthenticationFailureHandler is invoked.
+
+4.  If authentication is successful, then Success.
+
+   SessionAuthenticationStrategy is notified of a new log in.
+
+   The Authentication is set on the SecurityContextHolder. Later the SecurityContextPersistenceFilter saves the SecurityContext to the HttpSession.
+
+   RememberMeServices.loginSuccess is invoked. If remember me is not configured, this is a no-op(空操作).
+
+   ApplicationEventPublisher publishes an InteractiveAuthenticationSuccessEvent.
+
+   AuthenticationSuccessHandler is invoked.
+
+#### Username/Password
+
+##### Reading the Username & Password
+
+Spring Security provides the following built in mechanisms for reading a username and password from the HttpServletRequest:
+
+Section Summary
+
+ Form
+
+ Basic
+
+ Digest
+
+###### Form
+
+Form Login
+
+Spring Security provides support for username and password being provided through an html form. This section provides details on how form based authentication works within Spring Security.
+
+将用户重定向到表单上的日志:
+
+![](resource/loginurlauthenticationentrypoint.png)
+
+1. First, a user makes an unauthenticated request to the resource `/private` for which it is not authorized.
+
+2. Spring Security’s FilterSecurityInterceptor indicates that the unauthenticated request is Denied by throwing an AccessDeniedException.
+
+3. Since the user is not authenticated, ExceptionTranslationFilter initiates Start Authentication and sends a redirect to the log in page with the configured AuthenticationEntryPoint. In most cases the AuthenticationEntryPoint is an instance of LoginUrlAuthenticationEntryPoint.
+
+4. 然后，浏览器将请求将其重定向到的页面登录页面。
+
+5. 渲染登录页面
+
+   ![](resource/usernamepasswordauthenticationfilter.png)
+
+   1. 登录时UsernamePasswordAuthenticationFilter从HttpServletRequest中抽离用户名和密码生成UsernamePasswordAuthenticationToken，其类型为Authentication
+
+   2. Next, the UsernamePasswordAuthenticationToken is passed into the AuthenticationManager to be authenticated. The details of what AuthenticationManager looks like depend on how the user information is stored.
+
+   3. If authentication fails, then *Failure*
+
+      - The [SecurityContextHolder](https://docs.spring.io/spring-security/reference/servlet/authentication/architecture.html#servlet-authentication-securitycontextholder) is cleared out.
+      - `RememberMeServices.loginFail` is invoked. If remember me is not configured, this is a no-op.
+      - `AuthenticationFailureHandler` is invoked.
+
+   4.  If authentication is successful, then *Success*.
+
+      - `SessionAuthenticationStrategy`收到新登录的通知
+      - The [Authentication](https://docs.spring.io/spring-security/reference/servlet/authentication/architecture.html#servlet-authentication-authentication) is set on the [SecurityContextHolder](https://docs.spring.io/spring-security/reference/servlet/authentication/architecture.html#servlet-authentication-securitycontextholder).
+      - `RememberMeServices.loginSuccess` is invoked. If remember me is not configured, this is a no-op.
+      - `ApplicationEventPublisher` publishes an `InteractiveAuthenticationSuccessEvent`.
+      - The `AuthenticationSuccessHandler` is invoked. 通常，这是一个SimpleRauthenticationsuccesshandler，当我们重定向到登录页面时，它将重定向到由ExceptionTranslationFilter 保存的请求。
+
+      SpringSecurity默认登录表单是可用的，但是一旦提供了任何的servlet based configuration，必须提供基于表单的登录
+
+       A minimal, explicit Java configuration can be found below:
+
+      ```java
+      protected void configure(HttpSecurity http) {
+      	http
+      		// ...
+      		.formLogin(withDefaults());
+      }
+      ```
+
+In this configuration Spring Security will render a default log in page。
+
+自定义：
+
+```java
+protected void configure(HttpSecurity http) throws Exception {
+	http
+		// ...
+		.formLogin(form -> form
+			.loginPage("/login")
+			.permitAll()
+		);
+}
+```
+
+###### Basic
+
+Basic Authentication
+
+First, we see the WWW-Authenticate header is sent back to an unauthenticated client.
+
+![](resource/basicauthenticationentrypoint.png)
+
+1. First, a user makes an unauthenticated request to the resource `/private` for which it is not authorized.
+
+2.  Spring Security’s FilterSecurityInterceptor indicates that the unauthenticated request is Denied by throwing an AccessDeniedException.
+
+3. 启动身份验证， The configured AuthenticationEntryPoint is an instance of BasicAuthenticationEntryPoint which sends a WWW-Authenticate header. The RequestCache is typically a NullRequestCache that does not save the request since the client is capable of replaying the requests it originally requested
+
+   When a client receives the WWW-Authenticate header it knows it should retry with a username and password. Below is the flow for the username and password being processed.
+
+   ![](resource/basicauthenticationfilter.png)
+
+1. When the user submits their username and password, the BasicAuthenticationFilter creates a UsernamePasswordAuthenticationToken which is a type of Authentication by extracting the username and password from the HttpServletRequest.
+
+2.  Next, the UsernamePasswordAuthenticationToken is passed into the AuthenticationManager to be authenticated. The details of what AuthenticationManager looks like depend on how the user information is stored.
+
+3. If authentication fails, then Failure
+
+   The SecurityContextHolder is cleared out.
+
+   RememberMeServices.loginFail is invoked. If remember me is not configured, this is a no-op.
+
+   AuthenticationEntryPoint is invoked to trigger the WWW-Authenticate to be sent again.
+
+4. The `BasicAuthenticationFilter` invokes `FilterChain.doFilter(request,response)` to continue with the rest of the application logic.
+
+   Spring Security’s HTTP Basic Authentication support in is enabled by default. However, as soon as any servlet based configuration is provided, HTTP Basic must be explicitly provided.
+
+   ```java
+   protected void configure(HttpSecurity http) {
+   	http
+   		// ...
+   		.httpBasic(withDefaults());
+   }
+   ```
+
+###### Digest Authentication(摘要认证)
+
+由DigestAuthenticationFilter提供
+
+提醒：
+
+> You should not use Digest Authentication in modern applications because it is not considered secure. The most obvious problem is that you must store your passwords in plaintext, encrypted, or an MD5 format. All of these storage formats are considered insecure. Instead, you should store credentials using a one way adaptive password hash (i.e. bCrypt, PBKDF2, SCrypt, etc) which is not supported by Digest Authentication.
+
+摘要式身份验证尝试解决基本身份验证的许多弱点，特别是通过确保凭据永远不会以明文形式通过网络发送。许多浏览器都支持摘要式身份验证。
+
+摘要式身份验证的核心是“nonce”。这是服务器生成的值。Spring Security的nonce采用以下格式：
+
+示例 1.摘要语法
+
+```txt
+base64(expirationTime + ":" + md5Hex(expirationTime + ":" + key))
+expirationTime:   The date and time when the nonce expires, expressed in milliseconds
+key:              A private key to prevent modification of the nonce token
+```
+
+The following provides an example of configuring Digest Authentication with Java Configuration:`NoOpPasswordEncoder`
+
+Example 2. Digest Authentication
+
+```java
+@Autowired
+UserDetailsService userDetailsService;
+
+DigestAuthenticationEntryPoint entryPoint() {
+	DigestAuthenticationEntryPoint result = new DigestAuthenticationEntryPoint();
+	result.setRealmName("My App Relam");
+	result.setKey("3028472b-da34-4501-bfd8-a355c42bdf92");
+}
+
+DigestAuthenticationFilter digestAuthenticationFilter() {
+	DigestAuthenticationFilter result = new DigestAuthenticationFilter();
+	result.setUserDetailsService(userDetailsService);
+	result.setAuthenticationEntryPoint(entryPoint());
+}
+
+protected void configure(HttpSecurity http) throws Exception {
+	http
+		// ...
+		.exceptionHandling(e -> e.authenticationEntryPoint(authenticationEntryPoint()))
+		.addFilterBefore(digestFilter());
+}
+```
+
+##### Password Storage
+
+reading a username and password的每一个方法都支持以下支持的存储引擎：
+
+- Simple Storage with [In-Memory Authentication](https://docs.spring.io/spring-security/reference/servlet/authentication/passwords/in-memory.html#servlet-authentication-inmemory)
+- Relational Databases with [JDBC Authentication](https://docs.spring.io/spring-security/reference/servlet/authentication/passwords/jdbc.html#servlet-authentication-jdbc)
+- Custom data stores with [UserDetailsService](https://docs.spring.io/spring-security/reference/servlet/authentication/passwords/user-details-service.html#servlet-authentication-userdetailsservice)
+- LDAP storage with [LDAP Authentication](https://docs.spring.io/spring-security/reference/servlet/authentication/passwords/ldap.html#servlet-authentication-ldap)（轻量级目录访问协议）
 
 ## Spring Security 常用配置详解
 
