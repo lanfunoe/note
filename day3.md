@@ -125,6 +125,24 @@ String signature = HMACSHA256(
 
 ### SecurityConfig
 
+Spring Security下的[枚举](https://so.csdn.net/so/search?q=枚举&spm=1001.2101.3001.7020)SessionCreationPolicy,管理session的创建策略
+
+ALWAYS
+
+总是创建HttpSession
+
+IF_REQUIRED
+
+Spring Security只会在需要时创建一个HttpSession
+
+NEVER
+
+Spring Security不会创建HttpSession，但如果它已经存在，将可以使用HttpSession
+
+STATELESS
+
+Spring Security永远不会创建HttpSession，它不会使用HttpSession来获取SecurityContext
+
 ### JwtAuthenticationTokenFilter
 
 - Authentication与UserDetails对比
@@ -133,7 +151,26 @@ String signature = HMACSHA256(
 
 ​	UserDetails是从数据库（一般）读取数据产生的对象。
 
-- 
+- 实例化UsernamePasswordAuthenticationToken之后调用了setDetails(request,authRequest)将请求的信息设到UsernamePasswordAuthenticationToken中去，包括ip、session等内容
+
+  
+
+### RestfulAccessDeniedHandler
+
+实现AccessDeniedHandler
+
+flush：缓存区清空
+
+getWriter：返回一个PrintWriter，以供读写输出。
+
+response.setContentType设置返回内容格式
+
+ 	   text/html           HTML
+ 	    text/plain          TXT
+ 	    text/xml             XML
+ 	    application/json     json字符串
+
+
 
 ```
 compact()
@@ -346,4 +383,4 @@ new Date 当前时间
 a.before(b);   a<b?
 ```
 
-> ps：没有springSecuity 基础，下面看官方文档等方式学习即springSecurity篇
+> ps：没有springSecuity 基础，下面看官方文档等方式学习即springSecurity篇       
