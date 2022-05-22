@@ -177,6 +177,22 @@ compact()
 根据JWT Compact Serialization规则构建JWT并将其序列化为紧凑的URL安全字符串。
 ```
 
+### UmsAdminServiceImpl
+
+- BeanUtils
+
+工具类使用copyProperties对对象进行复制。
+
+- ```
+  passwordEncoder.matches(password, userDetails.getPassword()) 
+  比较方法
+  ```
+
+- BadCredentialsException 密码错误类
+- 
+
+
+
 ## Spring Security 常用配置详解
 
 [引用](https://www.jianshu.com/p/77b4835b6e8e)
