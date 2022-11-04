@@ -10,6 +10,8 @@
 
 [第一篇模糊的地方见此文章](https://blog.csdn.net/zhanggonglalala/article/details/98070986)
 
+[配置相关](https://blog.csdn.net/qq_45017999/article/details/107999533)
+
  ###   组件
 
  - Swagger 2
@@ -54,9 +56,10 @@ public class Swagger2Config {
 ```
 
 - apiInfo：api基本信息的配置，信息会在api文档上显示，可有选择的填充，比如配置文档名称、项目版本号等
+- select：返回 ApiSelectorBuilder 对象，通过对象调用 build()可以创建 Docket 对象
 
 
-- apis：使用什么样的方式来扫描接口
+- apis：使用什么样的方式来扫描接口，扫描扫描注释的接口
 
 >
 > ​	RequestHandlerSelectors 配置swagger扫描接口的方式
@@ -66,7 +69,7 @@ public class Swagger2Config {
 > 3. withClassAnnotation() 扫描类上的注解 参数是一个注解的反射对象
 > 4. withMethodAnnotation() 
 >
-- path：扫描接口的路径，PathSelectors下有四种方法
+- path：可以设置满足什么样规则的 url 被生成接口文档。可以使用正则表达式进行匹配，PathSelectors下有四种方法
 
   ![](resource\142858.png)
 
