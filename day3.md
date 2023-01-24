@@ -307,7 +307,7 @@ jsr250Enabled注解比较简单，只有
 
  用于通过允许AuthenticationProvider容易地添加来建立认证机制。
 
-也就是说用来记录账号，密码，角色信息。
+也就是说用来记录账号，密码，角色信息，用于配置UserDetailsService及PasswordEncoder。
 
 下方代码不从数据库读取，直接手动赋予
 
@@ -334,7 +334,7 @@ AuthenticationManagerBuilder allows
 
 允许基于选择匹配在资源级配置基于网络的安全性。以下示例将以/ admin /开头的网址限制为具有ADMIN角色的用户，并声明任何其他网址需要成功验证。
 
-也就是对角色的权限——所能访问的路径做出限制
+也就是对角色的权限——所能访问的路径做出限制，用于配置需要拦截的url路径、jwt过滤器及出异常后的处理器；
 
 [![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
 
